@@ -46,9 +46,6 @@ p1 <- ggplot(data=N, aes(x=m, y=clusters, group=factor(p), colour=factor(p))) +
 print(p1)
 
 
-
-
-
 #### SCENARIO: 500 pacients and simple random sampling ####
 f <- function(p) sqrt(1.96^2/500 * (1-p)/p)
 
@@ -67,7 +64,7 @@ View(cbind(x,f(x)))
 
 
 #### SCENARIO: 540 pacients and 27 clusters (mida m=20) ####
-#tenint en compte les pèrdues
+#tenint en compte les p?rdues
 k <- 0.4
 m <- 20
 
@@ -78,7 +75,7 @@ View(cbind(x,f(x)))
 
 
 #### SCENARIO: 540 pacients and 18 clusters (mida m=30) ####
-#tenint en compte les pèrdues
+#tenint en compte les p?rdues
 k <- 0.4
 m <- 30
 
@@ -89,7 +86,7 @@ View(cbind(x,f(x)))
 
 
 #### SCENARIO: 540 pacients and 12 clusters (mida m=45) ####
-#tenint en compte les pèrdues
+#tenint en compte les p?rdues
 k <- 0.4
 m <- 45
 

@@ -14,10 +14,12 @@ root <- getwd()
 ##### Mozambique spatial data
 
 # Get data from GADM
+setwd('data/spatial')
 moz3 <- getData('GADM', country = 'MOZ', level = 3) # localidade
 moz2 <- getData('GADM', country = 'MOZ', level = 2) # district
 moz1 <- getData('GADM', country = 'MOZ', level = 1) # province
 moz0 <- getData('GADM', country = 'MOZ', level = 0) # country
+setwd(root)
 
 # Fortify data into data.frame format
 moz3f <- fortify(moz3, region = 'NAME_3')
@@ -66,10 +68,10 @@ read_spreadsheet <- function(file_name  = 'Not.C.Delgado 2013.xls',
   # Add column with the location
   temp$location <- location
   # Rename columns
-  names(temp) <- c('distrito', 
+  names(temp) <- c('health_center', 
                    'pop',
                    'casos', 
-                   'provincia')
+                   'district')
   # Spit back
   return(temp)
 }
@@ -77,6 +79,7 @@ read_spreadsheet <- function(file_name  = 'Not.C.Delgado 2013.xls',
 # Read in the excel spreadsheets
 setwd('data')
 files <- dir()
+files <- files[grepl('.xls', files)]
 files <- files[files != 'Not.Nacional 2013.xls']
 locations <- c('Cabo Delgado',
                'Maputo City',
@@ -97,15 +100,50 @@ for (i in 1:length(files)){
                                         location = locations[i],
                                         sheet = 'anual')
 }
+setwd(root)
 
 # Bind together all the data from the different locations
 tb <- do.call(rbind, results_list)
 
-# Correct data types
+# Correct data types and add a rate
 tb$pop <- as.numeric(tb$pop)
 tb$casos <- as.numeric(tb$casos)
-
-# Add a rate
 tb$rate <- tb$casos / tb$pop
 
 ##### Associate tb data with the spatial data
+
+# Confirm that our names match in the two datasets
+all(unique(sort(tb$district)) == unique(sort(moz1f$id)))
+
+# Group together the tb data by district
+tb_district <- tb %>%
+  group_by(district) %>%
+  summarise(pop = sum(pop, na.rm = TRUE),
+            casos = sum(casos, na.rm = TRUE)) %>%
+  mutate(rate = casos / pop)
+
+# Bring district-level data into spatial map
+moz1f <- 
+  moz1f %>%
+  mutate(district = id) %>%
+  left_join(tb_district, by = 'district')
+
+# Show district-level rate
+ggplot(data = moz1f,
+       aes(x = long, y = lat, group = group, fill = rate)) +
+  coord_map() +
+  geom_polygon() +
+  scale_fill_gradient(low = 'white', 
+                      high = 'darkgreen',
+                        # guide = guide_legend(reverse=TRUE), 
+                        name = 'Case rate') +
+  geom_polygon(fill = NA, color = 'darkgrey') +
+  theme_bw() +
+  xlab('Longitude') +
+  ylab('Latitude')
+
+##### Geocode at a more granular level
+locations <- paste0(tb$health_center, ', ', tb$district, ', Mozambique')
+locations_geocoded <- geocode(locations, source = 'google')
+locations_geocoded[is.na(locations_geocoded$lon)] <- 
+  geocode(locations[is.na(locations_geocoded$lon)], source = 'google')
