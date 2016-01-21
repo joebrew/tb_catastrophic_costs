@@ -4,6 +4,7 @@ author:
   - Krijn Paaijmans  
   - Lucia Fernandez  
   - Joe Brew
+  - Elisa Sicuri  
   - Nick van de Giesen
 latex_engine: xelatex
 output:
@@ -16,7 +17,7 @@ output:
 tables: yes
 highlight: zenburn
 abstract: |
-  This concept note outlines a proposal to establish a network for the collection and distribution of micro-scale entemological, parasitological and meteorological data in the district of Manhiça, Mozambique. The purpose of this network is to inform public health practice (malaria control and elimination) and academic research, while also testing the feasibility and cost-effectiveness of scaling up this approach.  
+  \noindent This concept note outlines a proposal to establish a network for the collection and distribution of micro-scale entemological, parasitological and meteorological data in the district of Manhiça, Mozambique. The purpose of this network is to inform public health practice (malaria control and elimination) and academic research, while also testing the feasibility and cost-effectiveness of scaling up this approach.  
 ---
 
 
@@ -189,7 +190,9 @@ p1 <- ggplot() +
 print(p1)
 ```
 
-The grid-like nature will facilitate spatial interpolation not only for the the purposes of vector control, but also for disease risk factors (hypothetical examples below):  
+## Products  
+
+The grid-like nature will facilitate spatial interpolation not only for the the purposes of vector control, but also for disease risk factors and real-time risk maps (hypothetical examples below):  
 
 ```{r}
 
@@ -208,6 +211,7 @@ p2 <-  ggplot() +
                  aes(x = x,
                      y = y,
                      fill = ..level..),
+                 alpha = 0.5,
                  geom = 'polygon') +
                  # colour = class,
                  # bins = 30,
@@ -215,6 +219,9 @@ p2 <-  ggplot() +
                       high = 'darkblue',
                       # guide = guide_legend(reverse=TRUE), 
                       name = 'Mosquito index') +
+    geom_polygon(data = manhica_f,
+       aes(x = long, y = lat, group = NAME_3), 
+               fill = NA, color = 'black') +
     theme_tufte() +
   theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
   theme(axis.line=element_blank(),
@@ -246,13 +253,17 @@ p3 <-  ggplot() +
                  aes(x = x,
                      y = y,
                      fill = ..level..),
-                 geom = 'polygon') +
+                 geom = 'polygon',
+                 alpha = 0.6) +
                  # colour = class,
                  # bins = 30,
   scale_fill_gradient(low = 'darkorange',
                       high = 'darkblue',
                       # guide = guide_legend(reverse=TRUE), 
                       name = 'Malaria index') +
+      geom_polygon(data = manhica_f,
+       aes(x = long, y = lat, group = NAME_3), 
+               fill = NA, color = 'black') +
     theme_tufte() +
   theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
   theme(axis.line=element_blank(),
@@ -322,6 +333,8 @@ ggplot() +
       plot.background=element_blank())
 ```
 
+
+Finally, data will be integratable into fine-tuned models for forecasting future malaria activity, as well as to adjust for potential geographic bias in previously conducted studies.  
 
 
 ## Budget  
