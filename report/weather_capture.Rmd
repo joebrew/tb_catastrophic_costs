@@ -1,0 +1,341 @@
+---
+title: "Pilot program for the real time capture of granular weather data in a low resource environment for the purposes of mosquito/malaria surveillance and control"
+author: 
+  - Krijn Paaijmans  
+  - Lucia Fernandez  
+  - Joe Brew
+  - Nick van de Giesen
+latex_engine: xelatex
+output:
+  pdf_document:
+    includes:
+      header-includes: \usepackage{longtable}
+      in_header: style.sty
+    toc: yes
+  html_document: default
+tables: yes
+highlight: zenburn
+abstract: |
+  This concept note outlines a proposal to establish a network for the collection and distribution of micro-scale entemological, parasitological and meteorological data in the district of Manhiça, Mozambique. The purpose of this network is to inform public health practice (malaria control and elimination) and academic research, while also testing the feasibility and cost-effectiveness of scaling up this approach.  
+---
+
+
+
+
+```{r, echo=FALSE, comment=NA, message=FALSE, warning=FALSE} 
+#libraries
+library(deldir)
+library(raster)
+library(readxl)
+library(ggmap)
+library(ggplot2)
+library(grid)
+library(dplyr)
+library(knitr)
+library(ggthemes)
+library (rgdal)
+library(RColorBrewer)
+library(maptools)
+library(ggrepel) # for avoiding overlapping labels in ggplot2
+opts_chunk$set(comment = NA, message = FALSE, echo = FALSE, results = 'hide', fig.height = 3, warning = FALSE, fig.width = 6, fig.align = 'center')
+```
+
+```{r}
+suppressWarnings(library(xtable))
+options(xtable.comment = FALSE)
+```
+
+```{r}
+report_dir <- getwd()
+setwd('..')
+# Read in data and do preparatory operations
+source('code/read_in.R')
+source('code/helpers.R')
+setwd(report_dir)
+```
+
+\vspace{15mm}
+
+```{r}
+manhica <- moz3[moz3@data$NAME_2 == 'Manhiça',]
+plot(moz1, col = 'grey')
+plot(moz0, add = T)
+plot(manhica, col = 'red', add = T)
+# ggplot(data = moz0f,
+#        aes(x = long, y = lat)) +
+#   coord_map(projection = 'cylindrical') +
+#   # Country
+#   geom_polygon(aes(group = piece), fill = 'white', color = 'black') +
+#   # District
+#   geom_polygon(data = moz1f, 
+#                aes(x = long, y = lat, group = group),
+#                fill = NA, color = 'black', alpha = 0.95) +
+#   # District
+#   geom_polygon(data = moz2f, 
+#                aes(x = long, y = lat, group = group),
+#                fill = NA, color = adjustcolor('black', alpha.f = 0.5)) +
+#   # Localidade
+#   geom_polygon(data = moz3f, 
+#                aes(x = long, y = lat, group = group),
+#                fill = NA, color = adjustcolor('red', alpha.f = 0.2)) +
+#   # geom_polygon(aes(group = id), fill = 'grey', color = 'darkgrey') +
+#   xlab('Longitude') + ylab('Latitude') +
+#   theme_tufte()
+```
+
+\newpage
+
+
+# Overview  
+
+## The problem  
+
+Precipitation, temperature, humidity, cloud cover and wind can all affect mosquito populations size, location and level of activity, all of which have important implications for the transmission of malaria.  In low-resource environments (where malaria tends to be most prevalent), accurate climate data are related collected, and almost never at a scale which is granular enough to render those data useful to entemologists and epidemiologists.   
+
+## The solution  
+
+Establishing a network of personal weather stations (PWS) throughout a small area will allow for the collection, storage and distribution of granular weather data of research relevance and public health importance.  By pairing these weather stations with carbon dioxide baited mosqito traps, insight can be gleaned regarding the relationship between micro-climate characteristics and the mosquitoes which inhabit those climates (as well as the pathogens they host).  
+
+# Details  
+
+## Objective  
+
+In cooperation with the Centro de Investigaçao de Saude de Manhiça and the Iniciativa para a Eliminação de Malária de Moçambique, we will establish a network of personal weather stations paired with mosquito traps (PWSPMT) throughout the district of Manhiça, Mozambique.  We will maintain the stations/traps, collecting weather data digitally (in real-time) and trap data manually (bi-weekly).  We will type/test trapped mosquitoes, and make all data available (via a web interface and open API) for the purposes of research and public health practice.  
+
+## Rationale  
+
+Without fine-scale data regarding weather, the prevalence of mosquito subspecies, and those moquitoes' disease status, the complex relationship between host, pathogen and environment cannot be clearly established.  Understanding this relationship is of particular importance given (a) a recent pivot away from malaria _control_ towards malaria _elimination_ and (b) growing concern regarding the impact of climate change on vector-borne disease, particularly in low-resource settings.   
+
+## Purpose    
+
+The purpose of this project is not to conduct a study.  Rather, it is to create the conditions which will facilitate and enable dozens of studies, producing a mass amount of scientific insight that will be valuable not only to public health practitioners in the area concerned, but also the scientific community at large.  
+
+In addition to the generation of data of scientific and public health merit, this project will serve as a "test case" to demonstrate the feasability of both (a) granular, off-grid weather data collection via PWS, (b) the pairing of PWS with mosquito traps, and (c) the long-term viability of technological data capture projects in low-resource environments.  
+
+## Potential knowledge products  
+
+We foresee multiple potential end-users for the resultant data from this project:  
+
+
+**Entemology:** Mosquito prevalence by subspecies, seasonal and micro-geospatial variance in mosquito populations, impact of development and human activity on mosquito populations, impact of weather patterns on mosquito populations, variance in mosquito density at micro-scale, parasitological changes as function of weather, animal- and human-host importance to seasonal variation, etc. 
+
+**Epidemiology:** Impact of weather on disease transmission, affect of mosquito control activities on disease rates (controlling for weather), weather-adjusted risk factors for occupational infection, etc.    
+
+**Public health (public sector):** Identification of areas for high-risk of disease transmission, surveillance, rapid response emmpowerment, emerging threats identification, program evaluation of malaria control efforts, etc.    
+
+**Data scientists**: Provision of large, longitudinal dataset for purposes of predicting disease outbreaks, running machine learning algorithms to model spread of disease and mosquito populations.    
+
+**Economics**: Economic feasibility of weather/trap integration, cost-effectiveness of malaria control interventions, etc.   
+
+# Logistics  
+
+## Locations  
+
+This project will consist of the establishment of a network of long-lasting personal weather stations, accompanied by carbon dioxide mosquito traps.  Our intended density is approximately 3 PWSPMT per square kilometer (for a total of 200 units for the entire district).  These will be laid out in a grid-like structure so as to facilitate spatial interpolation and standardization (example below):  
+
+
+```{r}
+# Create grid of points within manhica
+x <- seq(bbox(manhica)['x','min'],
+         bbox(manhica)['x','max'],
+         length = 20)
+y <- seq(bbox(manhica)['y','min'],
+         bbox(manhica)['y','max'],
+         length = 20)
+pws <- expand.grid(x = x,y = y)
+coordinates(pws) <- ~x+y
+proj4string(pws) <- proj4string(manhica)
+# Keep only those in manhica
+pws <- pws[!is.na(over(pws, polygons(manhica))),]
+# pws <- pws[sample(1:length(pws), 35),]
+# Make dataframe
+pws_df <- data.frame(pws)
+
+# Fortify manhica
+manhica_f <- fortify(manhica, 'NAME_3')
+manhica_f <- 
+  manhica_f %>%
+  mutate(OBJECTID = as.numeric(id)) %>%
+  left_join(manhica@data)
+
+# Assign random values
+pws_df$val <- sample(1:100, nrow(pws_df), replace = TRUE)
+
+
+# Plot
+p1 <- ggplot() +
+  coord_map() +
+  geom_polygon(data = manhica_f,
+       aes(x = long, y = lat, group = NAME_3), 
+               fill = 'grey', color = 'darkgrey') +
+  geom_point(data = pws_df,
+             aes(x = pws_df$x, y = pws_df$y),
+             alpha = 0.6) +
+  theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank())
+
+print(p1)
+```
+
+The grid-like nature will facilitate spatial interpolation not only for the the purposes of vector control, but also for disease risk factors (hypothetical examples below):  
+
+```{r}
+
+# Random points from pws_df
+pws_small <- pws_df[sample(1:nrow(pws_df), 200, replace = TRUE),]
+
+p2 <-  ggplot() +
+  coord_map() +
+  geom_polygon(data = manhica_f,
+       aes(x = long, y = lat, group = NAME_3), 
+               fill = 'grey', color = 'darkgrey') +
+#   geom_point(data = pws_df,
+#              aes(x = pws_df$x, y = pws_df$y),
+#              alpha = 0.6) +
+  stat_density2d(data = pws_small,
+                 aes(x = x,
+                     y = y,
+                     fill = ..level..),
+                 geom = 'polygon') +
+                 # colour = class,
+                 # bins = 30,
+  scale_fill_gradient(low = 'darkorange',
+                      high = 'darkblue',
+                      # guide = guide_legend(reverse=TRUE), 
+                      name = 'Mosquito index') +
+    theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank())
+
+# Random points from pws_df
+pws_small <- pws_df[sample(1:nrow(pws_df), 2000, replace = TRUE),]
+
+
+p3 <-  ggplot() +
+  coord_map() +
+  geom_polygon(data = manhica_f,
+       aes(x = long, y = lat, group = NAME_3), 
+               fill = 'grey', color = 'darkgrey') +
+#   geom_point(data = pws_df,
+#              aes(x = pws_df$x, y = pws_df$y),
+#              alpha = 0.6) +
+  stat_density2d(data = pws_small,
+                 aes(x = x,
+                     y = y,
+                     fill = ..level..),
+                 geom = 'polygon') +
+                 # colour = class,
+                 # bins = 30,
+  scale_fill_gradient(low = 'darkorange',
+                      high = 'darkblue',
+                      # guide = guide_legend(reverse=TRUE), 
+                      name = 'Malaria index') +
+    theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank())
+multiplot(p2, p3, cols = 2)
+```
+
+Data will be linked to the census and health ministry, so as to define entemological/meteorological network cachement zones which can be directly linked to health records (and can be used by clinicians in the establishment of risk factors) (hypothetical example below):
+
+```{r}
+
+# Triangulation
+temp <- deldir(x = coordinates(pws)[,1],
+               y = coordinates(pws)[,2])
+# Calculate tile perimeters
+perims <- tilePerim(tile.list(temp))$perimeters
+# Create list of triangles
+trilist <- triang.list(temp)
+# Make that list a polygon object
+mypolys <- list()
+for (i in 1:length(trilist)){
+x <- rbind(cbind(trilist[[i]]$x, trilist[[i]]$y),
+cbind(trilist[[i]]$x[1], trilist[[i]]$y[1]))
+x <- Polygon(x)
+mypolys[i] <- x
+}
+
+# Create a spatial polygons obejct from my polys
+mytris <- SpatialPolygons(list(Polygons(mypolys, ID = 1)))
+# give proj4string
+proj4string(mytris) <- proj4string(manhica)
+
+# Fortify mytris
+mytris_f <- fortify(mytris)
+
+ggplot() +
+  coord_map() +
+  geom_polygon(data = manhica_f,
+       aes(x = long, y = lat, group = NAME_3), 
+               fill = 'grey', color = 'darkgrey') +
+  geom_polygon(data = mytris_f, 
+               aes(x = long, y = lat, group = piece),
+               fill = NA, color = 'red', alpha = 0.6) +
+    theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank())
+```
+
+
+
+## Budget  
+
+The following costs are foreseen to be associated with this project:  
+
+- Purchase of 200 PWS: $xxx 
+- Maintenance (3 years) of PWS: $xxx
+- Purchase of 200 mosquito traps: $xxx
+- Maintenance (3 years) of 200 mosquito traps: $xxx
+- Data storage and munging (for PWS-generated data): $xxx
+- Collection of specimens from traps (3 years): $xxx
+- Typing of specimens from traps (3 years): $xxx
+- Laboratory testing for parasitology from traps (3 years): $xxx
+- API development and web-hosting for data sharing: $xxx
+
+
