@@ -1,0 +1,522 @@
+---
+title: "Estimating the catastrophic costs of TB in Mozambique - methods"
+author: Alberto García-Basteiro and Joe Brew
+latex_engine: xelatex
+output:
+  pdf_document:
+    includes:
+      header-includes: \usepackage{longtable}
+      in_header: style.sty
+    toc: yes
+  html_document: default
+tables: yes
+highlight: zenburn
+---
+
+
+
+```{r, echo=FALSE, comment=NA, message=FALSE, warning=FALSE} 
+#libraries
+library(raster)
+library(readxl)
+library(ggmap)
+library(ggplot2)
+library(grid)
+library(dplyr)
+library(knitr)
+library(ggthemes)
+library (rgdal)
+library(RColorBrewer)
+library(maptools)
+library(ggrepel) # for avoiding overlapping labels in ggplot2
+opts_chunk$set(comment = NA, message = FALSE, echo = FALSE, results = 'hide', fig.height = 3, warning = FALSE, fig.width = 6, fig.align = 'center')
+```
+
+```{r}
+suppressWarnings(library(xtable))
+options(xtable.comment = FALSE)
+```
+
+```{r}
+report_dir <- getwd()
+setwd('..')
+# Read in data and do preparatory operations
+source('code/read_in.R')
+source('code/helpers.R')
+setwd(report_dir)
+```
+
+\vspace{15mm}
+
+```{r}
+plot(moz0)
+# ggplot(data = moz0f,
+#        aes(x = long, y = lat)) +
+#   coord_map(projection = 'cylindrical') +
+#   # Country
+#   geom_polygon(aes(group = piece), fill = 'white', color = 'black') +
+#   # District
+#   geom_polygon(data = moz1f, 
+#                aes(x = long, y = lat, group = group),
+#                fill = NA, color = 'black', alpha = 0.95) +
+#   # District
+#   geom_polygon(data = moz2f, 
+#                aes(x = long, y = lat, group = group),
+#                fill = NA, color = adjustcolor('black', alpha.f = 0.5)) +
+#   # Localidade
+#   geom_polygon(data = moz3f, 
+#                aes(x = long, y = lat, group = group),
+#                fill = NA, color = adjustcolor('red', alpha.f = 0.2)) +
+#   # geom_polygon(aes(group = id), fill = 'grey', color = 'darkgrey') +
+#   xlab('Longitude') + ylab('Latitude') +
+#   theme_tufte()
+```
+
+\newpage
+
+# Study objective  
+Estimate the proportion of households facing catastrophic costs due to TB among those affected by TB.  
+
+# Approach
+
+## Three-stage sampling    
+
+- 1st stage units: provinces  
+- 2nd stage units: districts  
+- 3rd stage units: health facilities (NTP network)  
+
+## Stratification  
+Provinces will be selected taking into account their location (north, centre and south).
+Districts will be selected according to their type (rural or urban).
+
+The objective of stratification is to improve the representativeness of the sample. We will force the proportion of people diagnosed from TB in each location to be equal to the real proportion. This technique is called proportionate stratification.
+
+Stratification leads to a smaller sample size, as a result of reducing the variability. But we are not able to estimate this reduction.
+
+
+## Assumptions  
+
+Using the formula in the protocol (v.15, section 3.5), we assume:   
+
+- A regular cluster sample survey.   
+- Three different potential notification rates (gamma/prevalences) of households facing catastrophic costs: 10%, 20% and 30%.  
+- A relative precision (d) of 0.2 (20%), as recommended in the protocol.  
+
+Under these assumptions, our cluster-specific sample size varies as a function to the notification rate and number of clusters:   
+
+```{r}
+
+
+# TB costs - sample size calculation - A G Basteiro#
+
+#### Sample size ####
+
+d <- 0.2
+k <- 0.4
+cluster_sizes <- seq(10, 50, 10)
+N <- NULL
+
+for (p in c(0.1,0.2,0.3)) {
+  for (m in cluster_sizes) {
+    aux <- (1.96^2*(1-p)/(d^2*p)) * (1+(m-1)*k^2*p/(1-p))
+    N <- rbind(N,cbind(p,m,N=aux))
+  }
+}
+
+N<-as.data.frame(N)
+
+# number of clusters
+# 53272/2
+N$Ncorr <- N$N/(1+(N$N-1)/(53272/2))
+N$Nperd <- N$Ncorr/0.9
+N$clusters <- ceiling(N$Nperd/N$m)
+
+Naux <- N[,c("p","m","clusters")]
+res <- reshape(Naux, idvar = "p", timevar = "m", direction = "wide")
+colnames(res)<-c("p", cluster_sizes)
+
+# corresponding total sample size
+# View(t(apply(res,1,function(x){x*c(1,20,30,50,75,100,150)})))
+
+# plot
+
+ggplot(data=N, aes(x=m, 
+                         y=clusters, 
+                         group=factor(paste0(p*100, '%')), 
+                         colour=factor(paste0(p*100, '%')))) +
+  geom_line() +
+  scale_y_continuous(name="Number of clusters") +
+  scale_x_continuous(breaks=cluster_sizes, name="Cluster size") + 
+  scale_colour_discrete(name=expression(paste("Assumed ",pi))) +
+  geom_point() + 
+  theme_tufte() +
+  ggtitle(paste0('Notification rate in relation to number and size of clusters')) +
+  geom_hline(yintercept = 27, alpha = 0.2, lty = 6) +
+  geom_vline(xintercept = 26, alpha = 0.2, lty = 6) +
+  geom_hline(yintercept = 0, alpha = 0.7) +
+  geom_vline(xintercept = 0, alpha = 0.7) 
+
+```
+
+We will limit the number of health facilities to 27 (above the recommended 25).  Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 84% of eligible health centers saw more than 26 cases in 2013 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
+
+```{r}
+label_df <- data.frame(x = 130, y = 50, label = 'Minimum')
+ggplot(data = tb,
+       aes(x = casos)) +
+  geom_histogram(alpha = 0.2, color = 'darkgrey') +
+  xlab('Cases') +
+  ylab('Number of health facilities') +
+  theme_tufte() +
+  ggtitle('Distribution of cases by health facility, 2013') +
+  geom_vline(xintercept = 26, color = 'darkred', alpha = 0.6) +
+  geom_text(data = label_df, aes(x = x, y = y, label = label), color = 'darkred', alpha = 0.6)
+```
+
+## Selection overview   
+
+We will employ a multi-staged clustering method which balances the need for geographic representativeness with the economic necessity of limiting the total number of participating health facilities to 27.  In order to ensure that our results reflect the true distribution throughout the country, we split our clustering at 3 strata - the "area", province, and district levels.  
+
+First, we divide the country into three "areas" - north, central, and south: 
+
+```{r, fig.height= 2.5}
+# Make a data frame for labeling
+label_df <- data.frame(coordinates(moz1))
+names(label_df) <- c('long', 'lat')
+label_df$province <- moz1$NAME_1
+
+# Assign areas
+label_df$area <- c('North',
+                   'South', 
+                   'South',
+                   'Central',
+                   'South',
+                   'South',
+                   'North',
+                   'North',
+                   'Central',
+                   'Central',
+                   'Central')
+label_df$area <- factor(label_df$area,
+                        levels = c('North', 'Central', 'South'))
+
+# Define colors
+cols <- c('darkgreen', 'darkblue', 'darkred')
+cols <- adjustcolor(cols, alpha.f = 0.6)
+
+ggplot() +
+  coord_map() +
+  geom_polygon(data = moz1f,
+       aes(x = long, y =lat, group = group), fill = 'white', color = 'grey') +
+  geom_label_repel(data = label_df, 
+            aes(long, lat, 
+                fill = factor(area),
+                label = factor(province)),
+            fontface = 'bold',
+            color = 'white',
+            size = 1.5, 
+            box.padding = unit(1.75, 'lines')) +
+  theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank()) +
+  scale_fill_manual(guide = guide_legend(title = 'Area'),
+                    values = cols)
+  
+```
+
+Each area contains between 3 and 4 provinces.  From each area, 1 province will be randomly selected, yielding a total of 3 provinces (left). Provinces contain approximately 8-10 districts.  3 districts will be randomly selected for each province, yielding a total of 9 districts (right):  
+
+```{r, fig.height = 3}
+# Assing three "random" provinces for selection
+label_df$Status <- ifelse(1:11 %in% c(6, 8, 9),
+                            'Selected', 'Not selected')
+moz1f$province <- moz1f$district
+
+# Bring selection data into moz1f
+moz1f <- left_join(moz1f,
+                   label_df[,c('Status', 'province')])
+
+cols <- adjustcolor(c('grey', 'darkred'), alpha.f = 0.6)
+p1 <- ggplot() +
+  coord_map() +
+  geom_polygon(data = moz1f,
+       aes(x = long, y =lat, group = group, fill = Status), color = 'grey') +
+  geom_label_repel(data = label_df[label_df$Status == 'Selected',], 
+            aes(long, lat, 
+                # fill = factor(area),
+                label = factor(province)),
+            # fill = 'grey',
+            fontface = 'bold',
+            color = 'black',
+            size = 2, 
+            box.padding = unit(1.75, 'lines')) +
+  theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank()) +
+  scale_fill_manual('Status',
+                    values = cols)
+
+
+# Bring selection status into moz2
+moz2@data <- 
+  moz2@data %>%
+  rename(province = NAME_1) %>%
+  left_join(label_df %>%
+              dplyr::select(long, lat, province, Status))
+
+# Place holder for district selected
+moz2@data$ds <- FALSE
+
+# For each of the selected provinces, randomly pick 3 districts
+set.seed(1309820)
+selected_provinces <- unique(sort(moz2@data$province[moz2@data$Status == 'Selected']))
+for (sp in selected_provinces){
+  sub_data <- moz2@data[moz2@data$province == sp,]
+  ds <- 1:nrow(sub_data) %in%
+    sample(1:nrow(sub_data), 3, replace = FALSE)
+  moz2@data$ds[moz2@data$province == sp] <- ds
+}
+
+# Re-foritfy
+moz2f <- fortify(moz2, group = 'NAME_2')
+
+# Join dat from moz2 to the fortified version
+moz2f <- left_join(x = moz2f %>% mutate(id = as.numeric(id)),
+                   y = moz2@data %>% mutate(id = ID_2) %>%
+                     dplyr::select(id, ds))
+moz2f$Status <- ifelse(moz2f$ds,
+                       'Selected',
+                       'Not selected')
+
+cols <- adjustcolor(c('grey', 'darkgreen'), alpha.f = 0.6)
+p2 <- ggplot() +
+  coord_map() +
+  geom_polygon(data = moz2f,
+       aes(x = long, y =lat, group = group, fill = Status), color = 'grey') +
+  theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank()) +
+  scale_fill_manual('Status',
+                    values = cols)
+multiplot(p1, p2, cols = 2)
+  
+
+
+```
+
+
+Each district contains 1-2 national TB control offices, and 8-10 peripheral branches.  In the final step, 3 offices/branches will be selected from each of the 9 provinces, yielding a total of 27 participating sites:
+
+
+```{r, fig.height = 4.5}
+# Create temporary data for random points in selected areas
+random_points <- expand.grid(x = seq(30, 41, length = 1000),
+                             y = seq(-27, -9, length = 1000))
+coordinates(random_points) <- ~x+y
+proj4string(random_points) <- proj4string(moz2)
+
+# Make selection
+random_points$poly <- over(random_points, polygons(moz2))
+
+# Keep only those in selected areas
+random_points <- random_points[random_points$poly %in% which(moz2@data$ds),]
+
+# Keep only three per poly
+random_points$keep <- FALSE
+polys <- unique(sort(random_points$poly))
+for(i in 1:length(polys)){
+  sub_data <- random_points[random_points$poly == polys[i],]
+  random_points$keep[random_points$poly == polys[i]] <- 
+    as.numeric(row.names(sub_data)) %in%
+    sample(as.numeric(row.names(sub_data)), 3)
+}
+random_points <- random_points[random_points$keep,]
+random_points$site <- paste0('Site ', 1:nrow(random_points))
+
+random_points$long <- 
+  coordinates(random_points)[,1]
+
+random_points$lat <- 
+  coordinates(random_points)[,2]
+
+
+cols <- adjustcolor(c('grey', 'darkblue'), alpha.f = 0.6)
+ggplot() +
+  coord_map() +
+  geom_polygon(data = moz2f,
+       aes(x = long, y =lat, group = group, fill = Status), color = 'grey') +
+  theme_tufte() +
+  geom_point(data = random_points@data,
+             aes(long, lat), alpha = 0.5, pch = 17) + 
+    geom_label_repel(data = random_points@data, 
+            aes(long, lat, 
+                # fill = factor(area),
+                label = factor(site)),
+            fill = adjustcolor('black', alpha.f = 0.3),
+            fontface = 'bold',
+            color = 'white',
+            size = 1.7, 
+            box.padding = unit(1, 'lines')) +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank()) +
+  scale_fill_manual('Status',
+                    values = cols)
+
+```
+
+
+
+## Selection details  
+
+The crude number of TB notifications (left) as well as the population-adjusted notification rate for TB (right) vary significantly by geography, as seen below (2013 data):
+
+```{r, fig.height = 4}
+# Bring goecoding info into tb
+tb <- cbind(tb, locations_geocoded)
+
+p <- ggplot() +
+  geom_polygon(data = moz0f,
+               aes(x = long, y = lat, group = group),
+               fill = 'white', color = 'darkgrey') +
+  coord_map() +
+  theme_tufte() +
+  theme(axis.ticks.length = unit(0.001, "mm")) + labs(x=NULL, y=NULL) +
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      # legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank()) 
+
+# Cases
+p1 <- p +
+    geom_point(data = tb,
+             aes(x = lon, y = lat, size = casos),
+             alpha = 0.5, col = 'red') +
+    scale_size_area('Notified cases')
+
+# Rate
+p2 <- p +
+    geom_point(data = tb,
+             aes(x = lon, y = lat, size = rate),
+             alpha = 0.5, col = 'red') +
+    scale_size_area('Notification rate')
+
+multiplot(p1, p2, cols = 2)
+```
+
+In order to account for heterogeneous notification rates by geography, we follow the methodology of WHO in similar studies. An "initial" randomization assigns the 3 participating provinces and 9 participating districts. From these 9 participating districts, a "secondary" randomization assigns the 27 particpating facilities.  The secondary randomization differs from the initial randomization in two important ways:  
+
+1. The secondary randomization employs a propability proportional to size (PPS) approach.  In other wrods, assignment is weighted by the number of cases previously detected at the facility.  The weighting, modeled off previous WHO studies (Myanmar) will be linear, ie a facility's likelihood of being recruited is directly proportional to its size (in terms of cachement population). 
+
+2. The secondary randomization has a simple exclusion criteria - for a facility to be eligible for assignment, it must have a cachement population of at least 35,000. Over 90% of facilities meet this criteria, and 100% of districts have sufficient (at least 3) facilities meeting criteria. 
+
+This step is necessary in order to avoid selection of facilities which will not produce enough cases so as to reach the level of statistical significance. It is justifiable given the non-correlation between facility cachement area and notification rate (below):
+
+```{r, fig.width= 4}
+ggplot(data = tb,
+       aes(x = pop, y = rate)) +
+  geom_point(alpha = 0.6) +
+  scale_x_log10() +
+  theme_tufte() +
+  xlab('Cachement population') +
+  ylab('Notification rate') +
+  ggtitle('Cachement population and notification rate')
+```
+
+
+
+## Number of patients  
+
+Having established the number of clusters at 27 (previous section) and the minimum cluster size at 26 ("Assumptions" section), we can estimate relative precision and quantify uncertainty at various gamma levels (assuming a 10% non-response rate).  
+
+```{r}
+k <- 0.4
+m <- 26
+response_rate <- 0.9
+
+f <- function(p) sqrt(1.96^2/((m*27)*response_rate/(1+(m-1)*k^2*p/(1-p))) * (1-p)/p)
+
+x <- c(0.1,0.2, 0.3)
+# cbind(x,f(x))
+
+temp <- data.frame(gamma = x,
+                   precision = f(x))
+ggplot(data = temp,
+       aes(x = gamma, y = precision)) +
+  geom_bar(stat = 'identity', alpha = 0.6) +
+  geom_text(aes(x = gamma, y = precision + 0.01, 
+                label = round(precision, digits = 2)), alpha = 0.5) +
+  xlab('Gamma') +
+  ylab('Precision') +
+  theme_tufte() +
+  ggtitle('Precision as a function of Gamma')
+```
+
+Given that the goal is to reach a precision of approximately 0.2 (20%), and that even our high-end gamma estimate (0.3) is low relative to other similar studies (0.3-0.5), our proposal to recruit 26 patients at each of the 27 sites should be wholly sufficient.
+
+# Limitations  
+
+*Representativeness*: Our approach is not without limitations.  The cost of training workers is a function of the number of sites (rather than the number of workers), thereby requiring a multi-tiered clustering approach.  Though we believe that the clustering methodology will yield results which are generalizable at the national scale, significant inter-district variability - or simply a "bad draw" - could bias results.  
+
+*Timeliness*: Our population and previous notification rates information are based on data collected in 2013 (the most recent available).  Though the correlation between trends in 2013 and present is likely tight, migratory activity and epidemiological change may mean that our sampling strategy is no longer the right fit.  
+
+*Recruitment assumptions*: We assume a 90% response rate.  A significantly lower response rate could mean difficulty in meeting the cluster-specific minimum recruitment numbers in the study time period allotted (this likely only applies at the least populous facilities).  
+
+*Facility-based recruitment*: In order to recruit the number of TB patients necessary for meaningful analysis, we rely on the health system infrastructure. Patients who are attended in health facilities are qualitatively different from those that are not treated, or treated by alternative means.  This could have important negative implications for the generalizability of our results.  
+
+# Details  
+
+The data and code for the calculations mentioned herein can all be found at <http://github.com/joebrew/tb_catastrophic_costs>.  
+
+Aina Castellas performed the original calculations and wrote the code on the multitude of potential scenarios and strategies that allowed us to hone in on the approach laid out in this document.  
