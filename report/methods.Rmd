@@ -158,7 +158,7 @@ ggplot(data=N, aes(x=m,
 
 ```
 
-We will limit the number of health facilities to 27 (above the recommended 25).  Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 84% of eligible health centers saw more than 26 cases in 2013 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
+We will limit the number of health facilities to 27 (above the recommended 25).  Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2013 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
 
 ```{r}
 label_df <- data.frame(x = 130, y = 50, label = 'Minimum')
@@ -166,9 +166,9 @@ ggplot(data = tb,
        aes(x = casos)) +
   geom_histogram(alpha = 0.2, color = 'darkgrey') +
   xlab('Cases') +
-  ylab('Number of health facilities') +
+  ylab('Number of districts') +
   theme_tufte() +
-  ggtitle('Distribution of cases by health facility, 2013') +
+  ggtitle('Distribution of cases by district, 2013') +
   geom_vline(xintercept = 26, color = 'darkred', alpha = 0.6) +
   geom_text(data = label_df, aes(x = x, y = y, label = label), color = 'darkred', alpha = 0.6)
 ```
@@ -457,11 +457,11 @@ multiplot(p1, p2, cols = 2)
 
 In order to account for heterogeneous notification rates by geography, we follow the methodology of WHO in similar studies. An "initial" randomization assigns the 3 participating provinces and 9 participating districts. From these 9 participating districts, a "secondary" randomization assigns the 27 particpating facilities.  The secondary randomization differs from the initial randomization in two important ways:  
 
-1. The secondary randomization employs a propability proportional to size (PPS) approach.  In other wrods, assignment is weighted by the number of cases previously detected at the facility.  The weighting, modeled off previous WHO studies (Myanmar) will be linear, ie a facility's likelihood of being recruited is directly proportional to its size (in terms of cachement population). 
+1. The secondary randomization employs a propability proportional to size (PPS) approach.  In other words, assignment is weighted by the number of cases previously detected in the district.  The weighting, modeled off previous WHO studies (Myanmar) will be linear, ie a facility's likelihood of being recruited is directly proportional to its size (in terms of likelihood of notififcation). 
 
-2. The secondary randomization has a simple exclusion criteria - for a facility to be eligible for assignment, it must have a cachement population of at least 35,000. Over 90% of facilities meet this criteria, and 100% of districts have sufficient (at least 3) facilities meeting criteria. 
+2. The secondary randomization has a simple exclusion criteria - for a facility to be eligible for assignment, it must have a previous annual notification rate of at least 26 cases per year. 
 
-This step is necessary in order to avoid selection of facilities which will not produce enough cases so as to reach the level of statistical significance. It is justifiable given the non-correlation between facility cachement area and notification rate (below):
+This step is necessary in order to avoid selection of facilities which will not produce enough cases so as to reach the level of statistical significance. It is justifiable given the non-correlation between district cachement area and notification rate (below):
 
 ```{r, fig.width= 4}
 ggplot(data = tb,
@@ -475,7 +475,6 @@ ggplot(data = tb,
 ```
 
 
-
 ## Number of patients  
 
 Having established the number of clusters at 27 (previous section) and the minimum cluster size at 26 ("Assumptions" section), we can estimate relative precision and quantify uncertainty at various gamma levels (assuming a 10% non-response rate).  
@@ -483,11 +482,13 @@ Having established the number of clusters at 27 (previous section) and the minim
 ```{r}
 k <- 0.4
 m <- 26
+clusters <- 27
 response_rate <- 0.9
-
-f <- function(p) sqrt(1.96^2/((m*27)*response_rate/(1+(m-1)*k^2*p/(1-p))) * (1-p)/p)
-
 x <- c(0.1,0.2, 0.3)
+
+
+f <- function(p) sqrt(1.96^2/((m*clusters)*response_rate/(1+(m-1)*k^2*p/(1-p))) * (1-p)/p)
+
 # cbind(x,f(x))
 
 temp <- data.frame(gamma = x,
@@ -504,6 +505,42 @@ ggplot(data = temp,
 ```
 
 Given that the goal is to reach a precision of approximately 0.2 (20%), and that even our high-end gamma estimate (0.3) is low relative to other similar studies (0.3-0.5), our proposal to recruit 26 patients at each of the 27 sites should be wholly sufficient.
+
+If, on the other hand, we wanted to afix precision at 0.2, we could examine how cluster-specific sample size changes as a function of gamma (the percentage of households facing catastrophic costs):
+
+```{r}
+k <- 0.4
+m <- 26
+clusters <- 27
+response_rate <- 0.9
+x <- c(0.1,0.2, 0.3)
+
+
+
+f <- function(p) sqrt(1.96^2/((m*clusters)*response_rate/(1+(m-1)*k^2*p/(1-p))) * (1-p)/p)
+
+for (kk in seq(0.1, 0.6, length = 11)){
+  k <- kk
+  m <- 26
+  clusters <- 27
+  response_rate <- 0.9
+  x <- 0.2
+}
+
+# cbind(x,f(x))
+
+temp <- data.frame(gamma = x,
+                   precision = f(x))
+ggplot(data = temp,
+       aes(x = gamma, y = precision)) +
+  geom_bar(stat = 'identity', alpha = 0.6) +
+  geom_text(aes(x = gamma, y = precision + 0.01, 
+                label = round(precision, digits = 2)), alpha = 0.5) +
+  xlab('Gamma') +
+  ylab('Precision') +
+  theme_tufte() +
+  ggtitle('Precision as a function of Gamma')
+```
 
 # Limitations  
 
