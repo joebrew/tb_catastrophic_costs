@@ -158,7 +158,49 @@ ggplot(data=N, aes(x=m,
 
 ```
 
-We will limit the number of health facilities to 27 (above the recommended 25).  Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2013 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
+Given that our target precision is 0.2, and that we wish to limit the number of health facilities to 27 (slightly above the recommended 25), we arrive at a facility-specific sample size of 26.    
+
+```{r}
+# TB costs - sample size calculation - A G Basteiro#
+
+#### Sample size ####
+
+d <- 0.2
+k <- 0.4
+cluster_sizes <- seq(20, 40, 1)
+N <- NULL
+
+for (p in c(0.3)) {
+  for (m in cluster_sizes) {
+    aux <- (1.96^2*(1-p)/(d^2*p)) * (1+(m-1)*k^2*p/(1-p))
+    N <- rbind(N,cbind(p,m,N=aux))
+  }
+}
+
+N<-as.data.frame(N)
+
+# number of clusters
+# 53272/2
+N$Ncorr <- N$N/(1+(N$N-1)/(53272/2))
+N$Nperd <- N$Ncorr/0.9
+N$clusters <- ceiling(N$Nperd/N$m)
+
+Naux <- N[,c("p","m","clusters")]
+res <- reshape(Naux, idvar = "p", timevar = "m", direction = "wide")
+colnames(res)<-c("p", cluster_sizes)
+```
+
+
+```{r, results = 'asis'}
+xxx <- N
+xxx <- xxx[,c('m', 'clusters')]
+names(xxx) <- c('Facility-specific sample size', 'Number of facilities')
+print(kable(xxx))
+```
+
+\newpage
+
+Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2013 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
 
 ```{r}
 label_df <- data.frame(x = 130, y = 50, label = 'Minimum')
@@ -338,7 +380,7 @@ multiplot(p1, p2, cols = 2)
 ```
 
 
-Each district contains 1-2 national TB control offices, and 8-10 peripheral branches.  In the final step, 3 offices/branches will be selected from each of the 9 provinces, yielding a total of 27 participating sites:
+Each district contains 1-2 national TB control offices, and 8-10 peripheral branches.  In the final step, 3 offices/branches will be selected from each of the 9 districts, yielding a total of 27 participating sites:
 
 
 ```{r, fig.height = 4.5}
@@ -459,7 +501,7 @@ In order to account for heterogeneous notification rates by geography, we follow
 
 1. The secondary randomization employs a propability proportional to size (PPS) approach.  In other words, assignment is weighted by the number of cases previously detected in the district.  The weighting, modeled off previous WHO studies (Myanmar) will be linear, ie a facility's likelihood of being recruited is directly proportional to its size (in terms of likelihood of notififcation). 
 
-2. The secondary randomization has a simple exclusion criteria - for a facility to be eligible for assignment, it must have a previous annual notification rate of at least 26 cases per year. 
+2. The secondary randomization has a simple exclusion criteria - for a facility to be eligible for assignment, it must have a previous annual notification rate of at least 100 cases per year. This virtually ensures that we will arrive to our minimal cluster-specific sample size of 26 in the 4 months during which data collection will take place.
 
 This step is necessary in order to avoid selection of facilities which will not produce enough cases so as to reach the level of statistical significance. It is justifiable given the non-correlation between district cachement area and notification rate (below):
 
@@ -519,13 +561,13 @@ x <- c(0.1,0.2, 0.3)
 
 f <- function(p) sqrt(1.96^2/((m*clusters)*response_rate/(1+(m-1)*k^2*p/(1-p))) * (1-p)/p)
 
-for (kk in seq(0.1, 0.6, length = 11)){
-  k <- kk
-  m <- 26
-  clusters <- 27
-  response_rate <- 0.9
-  x <- 0.2
-}
+# for (kk in seq(0.1, 0.6, length = 11)){
+#   k <- kk
+#   m <- 26
+#   clusters <- 27
+#   response_rate <- 0.9
+#   x <- 0.2
+# }
 
 # cbind(x,f(x))
 
@@ -544,9 +586,11 @@ ggplot(data = temp,
 
 # Limitations  
 
-*Representativeness*: Our approach is not without limitations.  The cost of training workers is a function of the number of sites (rather than the number of workers), thereby requiring a multi-tiered clustering approach.  Though we believe that the clustering methodology will yield results which are generalizable at the national scale, significant inter-district variability - or simply a "bad draw" - could bias results.  
+Our approach is not without limitations.  
 
-*Timeliness*: Our population and previous notification rates information are based on data collected in 2013 (the most recent available).  Though the correlation between trends in 2013 and present is likely tight, migratory activity and epidemiological change may mean that our sampling strategy is no longer the right fit.  
+*Representativeness*: The cost of training workers is a function of the number of sites (rather than the number of workers), thereby requiring a multi-tiered clustering approach.  In order to arrive at minimal cluster-specific sample size (26), we have to only include facilities with a higher case load (100 annual notifications).  This will bias selection in favor of facilities serving larger cachement areas, or more endemic regions.  Though we believe that the clustering methodology will yield results which are generalizable at the national scale, significant inter-district variability - or simply a "bad draw" - could bias results.  
+
+*Timeliness*: Our population and previous notification rates information are based on previous prevalence data.  Though the correlation between preveious trends and the present is likely tight, migratory activity and epidemiological change may mean that our sampling strategy is no longer the right fit.  
 
 *Recruitment assumptions*: We assume a 90% response rate.  A significantly lower response rate could mean difficulty in meeting the cluster-specific minimum recruitment numbers in the study time period allotted (this likely only applies at the least populous facilities).  
 
