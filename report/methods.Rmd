@@ -29,6 +29,7 @@ library (rgdal)
 library(RColorBrewer)
 library(maptools)
 library(ggrepel) # for avoiding overlapping labels in ggplot2
+library(readr)
 opts_chunk$set(comment = NA, message = FALSE, echo = FALSE, results = 'hide', fig.height = 3, warning = FALSE, fig.width = 6, fig.align = 'center')
 ```
 
@@ -200,7 +201,7 @@ print(kable(xxx))
 
 \newpage
 
-Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2013 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
+Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2014 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
 
 ```{r}
 label_df <- data.frame(x = 130, y = 50, label = 'Minimum')
@@ -210,9 +211,9 @@ ggplot(data = tb,
   xlab('Cases') +
   ylab('Number of districts') +
   theme_tufte() +
-  ggtitle('Distribution of cases by district, 2013') +
-  geom_vline(xintercept = 26, color = 'darkred', alpha = 0.6) +
-  geom_text(data = label_df, aes(x = x, y = y, label = label), color = 'darkred', alpha = 0.6)
+  ggtitle('Distribution of cases by province, 2014') 
+  # geom_vline(xintercept = 26, color = 'darkred', alpha = 0.6) #+
+  # geom_text(data = label_df, aes(x = x, y = y, label = label), color = 'darkred', alpha = 0.6)
 ```
 
 ## Selection overview   
@@ -454,11 +455,14 @@ ggplot() +
 
 ## Selection details  
 
-The crude number of TB notifications (left) as well as the population-adjusted notification rate for TB (right) vary significantly by geography, as seen below (2013 data):
+The crude number of TB notifications (left) as well as the population-adjusted notification rate for TB (right) vary significantly by geography, as seen below (2014 data):
 
 ```{r, fig.height = 4}
 # Bring goecoding info into tb
 tb <- cbind(tb, locations_geocoded)
+
+# Write
+write_csv(tb, 'tb.csv')
 
 p <- ggplot() +
   geom_polygon(data = moz0f,

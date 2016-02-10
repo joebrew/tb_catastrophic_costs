@@ -23,7 +23,7 @@ moz0f <- fortify(moz3, region = 'NAME_0')
 ##### to the spatial data
 
 # Define function to read in the data from the xls files
-read_spreadsheet <- function(file_name  = 'Not.C.Delgado 2013.xls',
+read_spreadsheet <- function(file_name  = 'Not.C.Delgado 2014 A.xls',
                              location = 'Niassa',
                              sheet = 'anual'){
   # Read spreadsheet
@@ -51,7 +51,7 @@ read_spreadsheet <- function(file_name  = 'Not.C.Delgado 2013.xls',
 setwd('data')
 files <- dir()
 files <- files[grepl('.xls', files)]
-files <- files[files != 'Not.Nacional 2013.xls']
+files <- files[files != 'Not.Nacional 2014.xls']
 locations <- c('Cabo Delgado',
                'Maputo City',
                'Gaza',
@@ -84,7 +84,7 @@ tb$rate <- tb$casos / tb$pop
 ##### Associate tb data with the spatial data
 
 # Confirm that our names match in the two datasets
-all(unique(sort(tb$district)) == unique(sort(moz1f$id)))
+# all(unique(sort(tb$district)) == unique(sort(moz1f$id)))
 
 # Group together the tb data by district
 tb_district <- tb %>%
