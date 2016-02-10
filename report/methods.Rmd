@@ -159,7 +159,7 @@ ggplot(data=N, aes(x=m,
 
 ```
 
-Given that our target precision is 0.2, and that we wish to limit the number of health facilities to 27 (slightly above the recommended 25), we arrive at a minimum facility-specific sample size of 24, which we buffer to 26 to account for potential data quality issues.    
+Given that our target precision is 0.2, and that we wish to limit the number of health facilities to 27 (slightly above the recommended 25), we arrive at an average facility-specific sample size of 24, which we buffer by two to 26 to account for data quality issues (total sample of 702 patients).
 
 ```{r}
 # TB costs - sample size calculation - A G Basteiro#
@@ -201,7 +201,7 @@ print(kable(xxx))
 
 \newpage
 
-Given that previous studies have suggest a gamma of 30%-50%, we assume a gamma of 30% (blue line in the above chart), suggesting a necessary minimum cluster size of 26 per participating health center.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2014 (the last year for which data are available), and many see an annual number of cases far in excess of our minimum:  
+Given that previous studies have suggest a gamma of 30%-50%, we assume a conservative gamma of 30% (blue line in the above chart), from which we estimate our 24-subject minimum average cluster-specific sample size.  This is feasible, as 100% of provinces saw an average of more than 26 cases per district in 2014 (the last year for which data are available), and over 80% of all districts saw an average of at least 78 cases (ie, sufficient for 26 per health center) annually:
 
 ```{r}
 label_df <- data.frame(x = 130, y = 50, label = 'Minimum')
@@ -379,7 +379,7 @@ multiplot(p1, p2, cols = 2)
 ```
 
 
-Each district contains 1-2 national TB control offices, and 8-10 peripheral branches.  In the final step, 3 offices/branches will be selected from each of the 9 districts, yielding a total of 27 participating sites:
+Each district usually has 1-2 national TB control offices, and around 8-12 peripheral branches.  In the final step, 3 offices/branches (of which one will automatically be the “head” health center for the district, along with 2 randomly selected others) will be selected from each of the 9 districts. This final step yields a total of 27 participating sites:
 
 
 ```{r, fig.height = 4.5}
@@ -453,7 +453,7 @@ ggplot() +
 
 ## Selection details  
 
-The crude number of TB notifications (left) as well as the population-adjusted notification rate for TB (right) vary significantly by geography, as seen below (2014 data):
+The crude number of TB notifications (below left) as well as the population-adjusted notification rate for TB (below right) vary significantly by geography (2014 data):
 
 ```{r, fig.height = 4}
 # Bring goecoding info into tb
@@ -549,42 +549,6 @@ ggplot(data = temp,
 ```
 
 Given that the goal is to reach a precision of approximately 0.2 (20%), and that even our high-end gamma estimate (0.3) is low relative to other similar studies (0.3-0.5), our proposal to recruit 26 patients at each of the 27 sites should be wholly sufficient.
-
-If, on the other hand, we wanted to afix precision at 0.2, we could examine how cluster-specific sample size changes as a function of gamma (the percentage of households facing catastrophic costs):
-
-```{r}
-k <- 0.4
-m <- 26
-clusters <- 27
-response_rate <- 0.9
-x <- c(0.1,0.2, 0.3)
-
-
-
-f <- function(p) sqrt(1.96^2/((m*clusters)*response_rate/(1+(m-1)*k^2*p/(1-p))) * (1-p)/p)
-
-# for (kk in seq(0.1, 0.6, length = 11)){
-#   k <- kk
-#   m <- 26
-#   clusters <- 27
-#   response_rate <- 0.9
-#   x <- 0.2
-# }
-
-# cbind(x,f(x))
-
-temp <- data.frame(gamma = x,
-                   precision = f(x))
-ggplot(data = temp,
-       aes(x = gamma, y = precision)) +
-  geom_bar(stat = 'identity', alpha = 0.6) +
-  geom_text(aes(x = gamma, y = precision + 0.01, 
-                label = round(precision, digits = 2)), alpha = 0.5) +
-  xlab('Gamma') +
-  ylab('Precision') +
-  theme_tufte() +
-  ggtitle('Precision as a function of Gamma')
-```
 
 # Limitations  
 
