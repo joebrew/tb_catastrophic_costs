@@ -1,6 +1,21 @@
 # This script calculates cluster specific sample sizes for the 
 # catastrophic costs in TB project.  It borrows heavily from Aina's.
 
+###### libraries
+library(raster)
+library(readxl)
+library(ggmap)
+library(ggplot2)
+library(grid)
+library(dplyr)
+library(knitr)
+library(ggthemes)
+library (rgdal)
+library(RColorBrewer)
+library(maptools)
+library(ggrepel) # for avoiding overlapping labels in ggplot2
+library(readr)
+
 ##### Directories
 root <- getwd()
 
@@ -39,10 +54,10 @@ read_spreadsheet <- function(file_name  = 'Not.C.Delgado 2014 A.xls',
   # Add column with the location
   temp$location <- location
   # Rename columns
-  names(temp) <- c('health_center', 
+  names(temp) <- c('district', 
                    'pop',
                    'casos', 
-                   'district')
+                   'province')
   # Spit back
   return(temp)
 }
@@ -87,28 +102,28 @@ tb$rate <- tb$casos / tb$pop
 # all(unique(sort(tb$district)) == unique(sort(moz1f$id)))
 
 # Group together the tb data by district
-tb_district <- tb %>%
-  group_by(district) %>%
+tb_province <- tb %>%
+  group_by(province) %>%
   summarise(pop = sum(pop, na.rm = TRUE),
             casos = sum(casos, na.rm = TRUE)) %>%
   mutate(rate = casos / pop)
 
-# Bring district-level data into spatial map
+# Bring province-level data into spatial map
 moz1f <- 
   moz1f %>%
-  mutate(district = id) %>%
-  left_join(tb_district, by = 'district')
+  mutate(province = id) %>%
+  left_join(tb_province, by = 'province')
 
 ##### Geocode at a more granular level
 setwd('data/spatial/')
 if('locations_geocoded.RData' %in% dir()){
   load('locations_geocoded.RData')
 } else {
-  locations <- paste0(tb$health_center, ', ', tb$district, ', Mozambique')
+  locations <- paste0(tb$district, ', ', tb$province, ', Mozambique')
   locations_geocoded <- geocode(locations, source = 'google')
 #   locations_geocoded[is.na(locations_geocoded$lon)] <- 
 #     geocode(locations[is.na(locations_geocoded$lon)], source = 'google')
-  save.image('locations_geocoded.RData')
+  save('locations_geocoded', file = 'locations_geocoded.RData')
 }
 setwd(root)
 
